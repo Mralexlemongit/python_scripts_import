@@ -1,22 +1,23 @@
 # ImportError: attempted relative import with no known parent package. Estrategias de importación.
 
-Nivel conocimiento: Python intermedio (Imports, ambientes, comandos)
+Nivel conocimiento: Intermedio (Imports, ambientes, comandos)
 Tiempo de lectura: 30 minutos
 
 ## Introducción
 
-Esta semana me he encontrado con una incognita usual al desarrollar en Python y quiero aprovechar para compartir distintas estrategias para resolverla:
+Esta semana me he encontrado con una situación usual al desarrollar en Python y quiero aprovechar para compartir distintas estrategias para resolverla:
 
-Se tiene un proyecto basado en python con una porción de código que funciona como la aplicación y otra porción de código que será el cliente (de dicha aplicación). Inicialmente ambas porciones de código estaban contenidas en el mismo archivo pero el proyecto he crecido, es hora de tomarlo en serio y el siguiente paso es refactorizar. Dependiendo de la lógica de tu proyecto puede que hayan sudedido una de los siguientes 4 casos:
+Se tiene un proyecto basado en python con una porción de código que funciona como la aplicación y otra porción de código que será el cliente (de dicha aplicación). Inicialmente ambas porciones de código estaban contenidas en el mismo archivo pero el proyecto he crecido, es hora de tomarlo en serio y el siguiente paso es refactorizar. Dependiendo de la lógica del proyecto y el como se dedecida refactorizar puede que hayan sudedido una de los siguientes 4 casos:
 
 ## Casos a analizar
 
 ### Caso 1: Archivos hermanados
 
 ```
-src/
-├── app.py
-└── client.py
+.
+└── src/
+    ├── app.py
+    └── client.py
 ```
 
 Es muy usual que los proyectos desde cero en Python llegados a algún punto tenga este aspecto, por ejemplo, donde el cliente sea el programa principal y la aplicación sean los util, funciones recurrentes o una abstracción de clase; otro caso común es que el cliente sean scripts o tests y que aplicación sea el programa principal.
@@ -24,31 +25,34 @@ Es muy usual que los proyectos desde cero en Python llegados a algún punto teng
 ### Caso 2: Punto de entrada unico
 
 ``` 
-src/
-├── apps/
-│   └── app.py
-└── client.py
+.
+└── src/
+    ├── apps/
+    │   └── app.py
+    └── client.py
 ```
-Este caso es muy usual cuando se tiene un punto de entrada unico para una aplicación como en un run.py o main.py; el archivo manage.py de django trabaja con este concepto.
+Este caso es un ejemplo de una entrada unica para una aplicación pueden ser archivos del tipo run.py o main.py que acceden a todas las funcionalidades de la app; el archivo manage.py de django trabaja con este concepto.
 
 ### Caso 3: Subdirectorio clientes
 
 ``` 
-src/
-├── clients/
-│   └── client.py
-└── app.py
+.
+└── src/
+    ├── clients/
+    │   └── client.py
+    └── app.py
 ```
 Sin temor a equivocarme diré que esta es la menos común las formas de estructurar archivos en un proyecto python. El próximo caso es una version más general de la anterior y las estrategias de solución aplican practicamente igual.
 
 ### Caso 4: Subdirectorios hermanos
 
 ``` 
-src/
-├── apps/
-│   └── app.py
-└── clients/
-    └── client.py
+.
+└── src/
+    ├── apps/
+    │   └── app.py
+    └── clients/
+        └── client.py
 ```
 Este caso es muy común cuando se trabajan en proyectos grandes. El par aplicación y cliente pueden corresponder a un paquete con sus scripts o/y tests; incluso podría ser que la aplicación sean los scripts y el cliente los tests. Tal vez hayas visto esta estructura en proyectos que incluyan notebooks y seguramente las has visto cuando aplicación y cliente corresponden a subpaquetes de un paquete padre. Este será el principal caso a tener en cuenta en las estrategias de solución.
 
@@ -56,19 +60,20 @@ Este caso es muy común cuando se trabajan en proyectos grandes. El par aplicaci
 
 ### Caso 1.1: Cliente en consola
 
-En este caso los archivos hermanados son `client.py` y `app.py`, ambos contenidos en `src/`. La idea es invocar directamente a `client.py` desde distintos directorios y ver como se comporta.
+En este caso los archivos hermanados son `script.py` y `app.py`, el primero consume al segundo, ambos contenidos en `src/`. La idea es invocar directamente a `script.py` desde distintos directorios y ver como se comporta.
 
 ``` python
 ### Estructura ###
-# src/
-# ├── app.py
-# └── client.py
+# case11/
+# └── src/
+#     ├── app.py
+#     └── script.py
 
 # src/app.py
 def foo():
     return 'Welcome from App foo!'
 
-# src/client.py
+# src/script.py
 import app
 
 def main():
@@ -78,19 +83,28 @@ if __name__ == '__main__':
     main()
 ```
 
-Nota: la linea **`if __name__ == '__main__':`** diferencia si el archivo se importó como modulo o se ejecutó como script. Para más información leer [este articulo](https://realpython.com/if-name-main-python/).
+**Nota:** la linea **`if __name__ == '__main__':`**, a muy grandes rasgos, diferencía si el archivo es ejecutado como script o importado como módulo, de esto depende si el contenido del `if` se ejecuta o no respectivamente. Puedes leer más detalles de esto en [este artículo](https://realpython.com/if-name-main-python/).
 
 ``` bash
-\case11\src> python client.py
+\case11\src> python script.py
 Welcome from App foo!
 
-\case11> python src\client.py
+\case11> python src\script.py
 Welcome from App foo!
 ```
 
-Al ser un import absoluto solo funcionara importar 
+Supongamos que la lógica cambia y ahora el script debe ejecutare desde el interprete entonces tiene que importarse, aqui el comportamiento del modulo será distinto dependiendo del directorio donde este posicionado el interprete.
 
+``` bash
+\case11\src> python
+>>> import script
+>>> script.main()
+Welcome from App foo!
 
+\case11> python
+>>> from src import script
+ModuleNotFoundError: No module named 'app'
+```
 
 ===== Subencarpetar los clients:
 Si el problema es que los clients no son parte del paquete, ¿Porqué no incluirlos en este? La idea es convertir a clients en un subpaquete y hacer el un import absoluto del contenido del paquete.
