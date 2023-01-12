@@ -58,9 +58,9 @@ Este caso es muy común cuando se trabajan en proyectos grandes. El par aplicaci
 
 ## Estrategias de importación
 
-### Caso 1.1: Cliente en consola
+### Caso 1.1: Ejecución en consola
 
-En este caso los archivos hermanados son `script.py` y `app.py`, el primero consume al segundo, ambos contenidos en `src/`. La idea es invocar directamente a `script.py` desde distintos directorios y ver como se comporta.
+En este caso los archivos hermanados son `script.py` y `app.py`, el primero consume al segundo, ambos contenidos en `src/`. La idea es ejecutar directamente a `script.py` desde distintos directorios y ver como se comporta.
 
 ``` python
 ### Estructura ###
@@ -93,7 +93,7 @@ Welcome from App foo!
 Welcome from App foo!
 ```
 
-Supongamos que la lógica cambia y ahora el script debe ejecutare desde el interprete entonces tiene que importarse, aqui el comportamiento del modulo será distinto dependiendo del directorio donde este posicionado el interprete.
+Supongamos que ahora el script debe ejecutare desde el interprete y tiene que importarse, aquí el comportamiento del modulo será distinto dependiendo del directorio donde este posicionado el interprete.
 
 ``` bash
 \case11\src> python
@@ -103,6 +103,41 @@ Welcome from App foo!
 
 \case11> python
 >>> from src import script
+ModuleNotFoundError: No module named 'app'
+```
+
+Aquí entra la siguiente estrategia de solución.
+
+### Caso 1.2: Modulos hermanos
+
+En este caso los archivos hermanados son `app.py` y `util.py`, el primero consume al segundo, ambos contenidos en el paquete `pac/`. La estructura es la siguiente.
+
+``` python
+### Estructura ###
+# case12/
+# └── pack/
+#     ├── app.py
+#     └── util.py
+
+# pack/app.py
+from . import util
+
+def main():
+    print(util.bar())
+
+# pack/util.py
+def bar():
+    return 'This is a util function!'
+```
+
+``` bash
+\case12> python
+>>> from pack import app
+>>> app.main() 
+This is a util function!
+
+\case12\pack> python
+>>> import app
 ModuleNotFoundError: No module named 'app'
 ```
 
@@ -141,5 +176,30 @@ Si el problema es que los clients no son parte del paquete, ¿Porqué no incluir
 
 # REFERENCIAS
 https://www.datasciencelearner.com/importerror-attempted-relative-import-parent-package/
+https://careerkarma.com/blog/python-beyond-top-level-package-error-in-relative-import/
+https://stackoverflow.com/questions/57744466/how-to-properly-structure-internal-scripts-in-a-python-project
 
-# TODO: Organizar
+
+CASO 1: importar modulo en el lugar correcto
+- El más sencillo de los métodos
+- El archivo no puede invocarse como script, y como import (o comando -m) solo si el interprete inicio en el directorio padre del paquete
+- No sirve si el script depende de dos paquetes contenidos en distintos directorios
+- Recomendado para scripts rapidos de un solo uso
+
+CASO 2: Agregar los directorios necesarios a sys.path
+- existen 2 formas de hacerlo
+    - Agregar todos los paths necesarios a cada script hara que funcione desde cualquier lugar sin importar como se invoque pero vuelve los scripts dificiles de mantaner 
+    - Crear un archivo de inicializacion en directorio de scripts, asi se pueden ejecutar como scripts desde cualquier lugar pero afecta a la importación (o comando -m) y solo podra realizarse desde el directorio donde se encuentre el archivo de inicializacion
+- personalmente es el methodo que menos recomiendo pero el methodo existe y siempre es bueno conocerlo
+
+CASO 3: Instalar el paquete en un entorno virtual
+- Se recomienda encarecidamente usar un ambiente virtual para llevar a cabo este metodo
+- se tiene que instalar cada paquete a usarse en los scripts
+- de todas las estrategias es la mas limpia, facil y que hara funcionar los archivos desde cualquier ubicación y bajo cualquier forma de invocación
+
+CASO 4: Crear un punto de entrada
+- En necesario una implementación de la logica dentro del archivo de punto de entrada, esto requiere cierto nivel de conocimiento del lenguage
+- esta logica es comun en proyectos grandes (tomese de ejemplo django), en librerias pensadas en usarse desde consola o, por supuesto, cuando se desea tener un punto de entrada unico a la aplicación.
+- cave destacar que hay distintas estrategias y librerias para implementar el archivo run.py por lo que la complejidad de esta puede aumentar significativamente
+
+En resumen, a menos que sea requerido algo en particular yo te recomendaria hacer uso del caso 3 si es planeas correr scripts o tests contantemente y el caso 1 si solo necesitas correr un escript referenciando a un paquete pocas veces sin olvidar posicionarte en la carpeta adecuada.

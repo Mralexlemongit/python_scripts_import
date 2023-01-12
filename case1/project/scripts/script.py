@@ -1,7 +1,7 @@
-import app
+from package.module import foo
 
 def main():
-    print(app.foo())
+    print(foo())
 
 if __name__ == '__main__':
     main()
