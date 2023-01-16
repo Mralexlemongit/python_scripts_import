@@ -229,11 +229,47 @@ Welcome from foo!
 ### Recomendado
 - En general es el metodo recomendado para cualquier caso.
 
-# Caso 4: Punto de entrada
+Caso 4: Punto de entrada
+
+Esta estrategia la considero la más compleja de todas por lo mucho que puede aumentar la logica de un proyecto. La idea es agregar un archivo que va a funcionar como punto de entrada, si has trabajado con Django te sonará el archivo `manage.py` archivo que funciona como punto de entrada para las funcionalidades principales de los proyectos, en este caso se agregara la version más simple que se me puede ocurrir.
+
+``` python
+# case4/project/run.py
+import sys
+
+def dispatch(arguments=None):
+    if arguments is None or len(arguments) != 2:
+        raise Exception('Must have 2 parameters')
+    
+    if arguments[0] == 'script':
+        run_script(arguments[1])
+    else:
+        raise Exception('Unknown command')
+
+def run_script(name):
+    try:
+        exec(f'from scripts import {name}')
+    except ImportError:
+        raise Exception(f'Unknown script "{name}"')
+        
+    exec(f'{name}.main()')
+
+if __name__ == '__main__':
+    dispatch(sys.argv[1:])
+```
+
+Aquí la función `dispatch` se encarga de determinar que acción realizar dependiendo de los argumentos de la ejecución. La función `run_script` se encarga de ejecutar el script. Nota que este script hace varios supuestos como dos argumentos por ejecución o que todos los scripts tendran una función `main`, parecido al método `handle` en las clases para comandos en django. Este escript unicamente se puede invocar desde el directorio del projecto.
+
+``` bash
+\case4\project> python run.py script script
+Welcome from foo!
+
+\case4\project> python run.py script another_script
+Exception: Uknow script "another_script"
+```
 
 
-
-# REFERENCIAS
+REFERENCIAS
 https://www.datasciencelearner.com/importerror-attempted-relative-import-parent-package/
 https://careerkarma.com/blog/python-beyond-top-level-package-error-in-relative-import/
 https://stackoverflow.com/questions/57744466/how-to-properly-structure-internal-scripts-in-a-python-project
