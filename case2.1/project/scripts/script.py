@@ -1,4 +1,8 @@
-import initialization
+import os, sys
+
+currentdir = os.path.dirname(__file__)
+parentdir = os.path.dirname(currentdir)
+sys.path.insert(0, parentdir) 
 
 from package.module import foo
 
@@ -7,5 +11,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-

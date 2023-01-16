@@ -1,200 +1,215 @@
-# ImportError: attempted relative import with no known parent package. Estrategias de importación.
+# ImportError: attempted relative import with no known parent package. Estrategías para importar carpetas.
 
 Nivel conocimiento: Intermedio (Imports, ambientes, comandos)
 Tiempo de lectura: 30 minutos
 
 ## Introducción
 
-Esta semana me he encontrado con una situación usual al desarrollar en Python y quiero aprovechar para compartir distintas estrategias para resolverla:
+Esta semana me he encontrado con una situación usual que puede que te haya ocurrido y quise aprovechar para compartir estrategias dependiendo del tipo de desarrollo que estes llevando a cabo.
 
-Se tiene un proyecto basado en python con una porción de código que funciona como la aplicación y otra porción de código que será el cliente (de dicha aplicación). Inicialmente ambas porciones de código estaban contenidas en el mismo archivo pero el proyecto he crecido, es hora de tomarlo en serio y el siguiente paso es refactorizar. Dependiendo de la lógica del proyecto y el como se dedecida refactorizar puede que hayan sudedido una de los siguientes 4 casos:
-
-## Casos a analizar
-
-### Caso 1: Archivos hermanados
-
-```
-.
-└── src/
-    ├── app.py
-    └── client.py
-```
-
-Es muy usual que los proyectos desde cero en Python llegados a algún punto tenga este aspecto, por ejemplo, donde el cliente sea el programa principal y la aplicación sean los util, funciones recurrentes o una abstracción de clase; otro caso común es que el cliente sean scripts o tests y que aplicación sea el programa principal.
-
-### Caso 2: Punto de entrada unico
-
-``` 
-.
-└── src/
-    ├── apps/
-    │   └── app.py
-    └── client.py
-```
-Este caso es un ejemplo de una entrada unica para una aplicación pueden ser archivos del tipo run.py o main.py que acceden a todas las funcionalidades de la app; el archivo manage.py de django trabaja con este concepto.
-
-### Caso 3: Subdirectorio clientes
-
-``` 
-.
-└── src/
-    ├── clients/
-    │   └── client.py
-    └── app.py
-```
-Sin temor a equivocarme diré que esta es la menos común las formas de estructurar archivos en un proyecto python. El próximo caso es una version más general de la anterior y las estrategias de solución aplican practicamente igual.
-
-### Caso 4: Subdirectorios hermanos
-
-``` 
-.
-└── src/
-    ├── apps/
-    │   └── app.py
-    └── clients/
-        └── client.py
-```
-Este caso es muy común cuando se trabajan en proyectos grandes. El par aplicación y cliente pueden corresponder a un paquete con sus scripts o/y tests; incluso podría ser que la aplicación sean los scripts y el cliente los tests. Tal vez hayas visto esta estructura en proyectos que incluyan notebooks y seguramente las has visto cuando aplicación y cliente corresponden a subpaquetes de un paquete padre. Este será el principal caso a tener en cuenta en las estrategias de solución.
-
-## Estrategias de importación
-
-### Caso 1.1: Ejecución en consola
-
-En este caso los archivos hermanados son `script.py` y `app.py`, el primero consume al segundo, ambos contenidos en `src/`. La idea es ejecutar directamente a `script.py` desde distintos directorios y ver como se comporta.
+Se tiene un proyecto python que ha estado creciendo, despues de una refactorización se han creado dos carpetas: una carpeta que conforma el paquete principal y otra de scripts que no es parte del paquete pero depende de este. La estructura es la siguiente:
 
 ``` python
-### Estructura ###
-# case11/
-# └── src/
-#     ├── app.py
-#     └── script.py
+# .
+# └── project/
+#     ├── package/
+#     │   └── module.py
+#     └── scripts/
+#         └── script.py
 
-# src/app.py
+# ./project/package/module.py
 def foo():
-    return 'Welcome from App foo!'
+    return 'Welcome from foo!'
 
-# src/script.py
-import app
+# ./project/scripts/script.py
+from package.module import foo
 
 def main():
-    print(app.foo())
+    print(foo())
 
 if __name__ == '__main__':
     main()
 ```
 
-**Nota:** la linea **`if __name__ == '__main__':`**, a muy grandes rasgos, diferencía si el archivo es ejecutado como script o importado como módulo, de esto depende si el contenido del `if` se ejecuta o no respectivamente. Puedes leer más detalles de esto en [este artículo](https://realpython.com/if-name-main-python/).
+**Nota:** la linea **`if __name__ == '__main__':`**, a muy grandes rasgos, diferencía si el archivo es ejecutado directamente como script o importado por otro archivo como módulo, de esto depende si el contenido del `if` se ejecuta o no respectivamente. Puedes leer más detalles de esto en [este artículo](https://realpython.com/if-name-main-python/).
+
+Dependiendo de como se intente acceder al archivo `script.py` este podría funcionar o no por una u otra razón. Las siguientes son estrategias basadas en esta estructura para lograr que los archivos contenidos en scripts funcionen correctamente.
+
+## Caso 1: El punto de ejecución importa
+
+Basado en la estrucutra actual es posible ejecutar cualquier script si se invoca como modulo, por ejemplo.
 
 ``` bash
-\case11\src> python script.py
-Welcome from App foo!
+\case1\project> python -m scripts.script
+Welcome from foo!
 
-\case11> python src\script.py
-Welcome from App foo!
+\case1\project> python
+>>> from scripts.script import main
+>>> main()
+Welcome from foo!
 ```
 
-Supongamos que ahora el script debe ejecutare desde el interprete y tiene que importarse, aquí el comportamiento del modulo será distinto dependiendo del directorio donde este posicionado el interprete.
+Esto funciona porque el punto de ejecución del interprete es `\case1\project` donde existe `package` por lo que el `import` de `script.py` sobre este mismo directorio. Para entender mejor el concepto de directorios de inportación puedes ayudarte leyendo [este artículo](https://www.howtouselinux.com/post/understanding-sys-path-in-python).
+
+Ahora se invoca el archivo como script:
 
 ``` bash
-\case11\src> python
->>> import script
->>> script.main()
-Welcome from App foo!
-
-\case11> python
->>> from src import script
-ModuleNotFoundError: No module named 'app'
+\case1\project> python scripts\script.py
+ModuleNotFoundError: No module named 'package'
 ```
 
-Aquí entra la siguiente estrategia de solución.
+En este caso el punto de ejecución es `\case1\project\scripts`. En este directorio no existe `package` por lo que no puede importarlo.
 
-### Caso 1.2: Modulos hermanos
-
-En este caso los archivos hermanados son `app.py` y `util.py`, el primero consume al segundo, ambos contenidos en el paquete `pac/`. La estructura es la siguiente.
+Ejercicio: Agrega el siguiente archivo e intenta ejecutar el comando anterior y explica que es lo que ha pasado.
 
 ``` python
-### Estructura ###
-# case12/
-# └── pack/
-#     ├── app.py
-#     └── util.py
+# case1/project/scripts/package/module.py
+def foo():
+    return 'Welcome from distinct foo!'
+```
 
-# pack/app.py
-from . import util
+### Ventajas:
+- Es el más sencillo de los métodos.
+
+### Desventaja:
+- Tiene que conocerse el punto de arranque del interprete y la disposición de los paquetes desde ese punto. Si no se tiene una comprensión de como funciona esto, puede ser complicado.
+
+- No hay manera de hacer esto (sin agregar código) si el script depende de dos paquetes contenidos en distintos directorios.
+
+### Recomendado
+- Cuando las ejecuciónes de scripts son muy poco recurrentes.
+
+## Caso 2: Agregar el directorio del paquete
+
+Aquí esta el archivo `script.py` de caso 2.1.
+
+``` python
+# case2.1/project/scripts/script.py
+import os, sys
+
+currentdir = os.path.dirname(__file__)
+parentdir = os.path.dirname(currentdir)
+sys.path.insert(0, parentdir) 
+
+from package.module import foo
 
 def main():
-    print(util.bar())
+    print(foo())
 
-# pack/util.py
-def bar():
-    return 'This is a util function!'
+if __name__ == '__main__':
+    main()
 ```
+
+Aquí, a grandes rasgoz, la librería `os` da acceso a funcionalidades del sistema operativo, `sys` da acceso a variables que usa el interprete de Python. `__file__` es la ruta absoluta de `script.py`, `curentdir` es el directorio de la carpeta `scripts` y `parentdir` el de `project`, este último directorio se agrega a `sys.path` que, si ya leeiste [el articulo](https://www.howtouselinux.com/post/understanding-sys-path-in-python), sabras que ahora este directorio tambien se inspeccionará al momento de buscar el paquete `package`, por esto el programa funciona sin importar la forma o el lugar donde se invoca el script.
 
 ``` bash
-\case12> python
->>> from pack import app
->>> app.main() 
-This is a util function!
+\case2.1> python project\scripts\script.py
+Welcome from foo!
 
-\case12\pack> python
->>> import app
-ModuleNotFoundError: No module named 'app'
+\case2.1> python
+>>> from project.scripts.script import main
+>>> main()
+Welcome from foo!
+
+\case2.1> python -m project.scripts.script
+Welcome from foo!
+
+\case2.1\project\script> python -m script
+Welcome from foo!
 ```
 
-===== Subencarpetar los clients:
-Si el problema es que los clients no son parte del paquete, ¿Porqué no incluirlos en este? La idea es convertir a clients en un subpaquete y hacer el un import absoluto del contenido del paquete.
-• recomendado para proyectos pequeños y medianos o donde no importa tener toda la logica en la mima subraiz
-• No se recomienda si se quiere usar este metodo para dos paquetes sobre raiz
-• El mas sencillo de todos
-• Mantiene la logica mal estructurada
-• Los clients no pueden invocarse desde cualquier lugar?
-     • depende si se hacen relativos o absolutos 
+Pero esto tiene un problema. Repetir la misma porción de código en todos los scripts es complicado y díficil de mantener. Una solución para esto es agregar un archivo de inicialización de scripts como en el caso 2.2:
 
-===== a travez del path:
--> importando sys y direccionando a la posicion del paquete
-• es el que menor requerimientos de conocimientos en python requiere
-• no recomendado en trabajos serios
-• No esta estilizado
+``` python
+# case2.2/project/scripts/initialization.py
+import os, sys
 
-===== Instalar el paquete:
--> Maneras de instalar un paquete
-• recomendado para: proyectos medianos
-• se puede instalar en un entorno aislado o en el sistema (se recomienda instalar en un ambiente)
-• los imports relativos dejan de ser necesarios
-• hay que saber instalar paquetes
+print('Initializating scripts')
 
-===== crear un archivo como punto de entrada
-• recomendado para: proyectos complejos
-• elegante
-• puedes aprovechar para incluirlo entre las formas de usar el paquete
-• hay que programar toda la logia del punto de entrada
-    • con un run.py
-    • usando la libreria setuptools
+currentdir = os.path.dirname(__file__)
+parentdir = os.path.dirname(currentdir)
+sys.path.insert(0, parentdir)
 
-===========
-• Buscar y hacer funcionar mas methodos
+# case2.2/project/scripts/script.py
+import initialization
+
+from package.module import foo
+
+def main():
+    print(foo())
+
+if __name__ == '__main__':
+    main()
+```
+
+Esto permite que en el script pueda ejecutarse desde cualquier ubicación pero no se puede importar de otro lado que no sea la carpeta `scripts`.
+
+``` bash
+\case2.2> python project\scripts\script.py
+Initializating scripts
+Welcome from foo!
+
+\case2.2> python
+>>> from project.scripts.script import main
+ModuleNotFoundError: No module named 'initialization'
+
+\case2.2> python -m project.scripts.script
+ModuleNotFoundError: No module named 'initialization'
+
+\case2.2\project\script> python -m script
+Initializating scripts
+Welcome from foo!
+```
+
+Ejercicio: Explicar porque la ejecución como script funciona desde cualquier punto pero no la importación.
+
+### Ventajas
+- Con este metodo puedes incluir todos los directorios de todos los paquetes que estes desarrollando.
+
+### Desventajas
+- Tienes que elegir entre dificl de mantener (caso 2.1) y limitar desde donde se puede importar (caso 2.2).
+
+### Recomendado
+- Este método me ha funcionado en proyectos con notebooks, en caso de paquetes prefiero el siguiente método.
+
+## Caso 3: Instalar el paquete
+
+De entre todas las estrategías incluidas en este post seguramente lo más sencillo sea instalar el paquete que se esta elavorando. Para esto en se agrega un archivo de instalación, en este caso se utilizara la librería integrada de `setuptools`.
+
+``` python
+# case3/project/setup.py
+import setuptools
+
+setuptools.setup(
+    name="package",
+    version="1.0.0",
+    author="You",
+    author_email="you@example.com",
+    description="This is my project",
+    packages=["package"],
+)
+```
+
+Para entender este paquete y que más puedes hacer con el lee [este artículo](https://godatadriven.com/blog/a-practical-guide-to-using-setup-py/).
+
+Aqui se recomienda crear un ambiente virtual (entiende más de entornos virtuales en)
 
 # REFERENCIAS
 https://www.datasciencelearner.com/importerror-attempted-relative-import-parent-package/
 https://careerkarma.com/blog/python-beyond-top-level-package-error-in-relative-import/
 https://stackoverflow.com/questions/57744466/how-to-properly-structure-internal-scripts-in-a-python-project
-
+https://www.howtouselinux.com/post/understanding-sys-path-in-python
+https://realpython.com/if-name-main-python/
 
 CASO 1: importar modulo en el lugar correcto
-- El más sencillo de los métodos
-- El archivo no puede invocarse como script, y como import (o comando -m) solo si el interprete inicio en el directorio padre del paquete
-- No sirve si el script depende de dos paquetes contenidos en distintos directorios
-- Recomendado para scripts rapidos de un solo uso
+
 
 CASO 2: Agregar los directorios necesarios a sys.path
-- existen 2 formas de hacerlo
-    - Agregar todos los paths necesarios a cada script hara que funcione desde cualquier lugar sin importar como se invoque pero vuelve los scripts dificiles de mantaner 
-    - Crear un archivo de inicializacion en directorio de scripts, asi se pueden ejecutar como scripts desde cualquier lugar pero afecta a la importación (o comando -m) y solo podra realizarse desde el directorio donde se encuentre el archivo de inicializacion
-- personalmente es el methodo que menos recomiendo pero el methodo existe y siempre es bueno conocerlo
+
 
 CASO 3: Instalar el paquete en un entorno virtual
 - Se recomienda encarecidamente usar un ambiente virtual para llevar a cabo este metodo
-- se tiene que instalar cada paquete a usarse en los scripts
+- se tiene que reinstalar el paquete cada vez que se realize un cambio.
 - de todas las estrategias es la mas limpia, facil y que hara funcionar los archivos desde cualquier ubicación y bajo cualquier forma de invocación
 
 CASO 4: Crear un punto de entrada
