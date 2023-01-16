@@ -1,5 +1,7 @@
 __pycache__/
 venv/
+
+# Directories created from the installation 
 dist/
 build/
 *.egg-info/
