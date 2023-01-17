@@ -1,4 +1,4 @@
-# ImportError: attempted relative import with no known parent package. Métodos de importación de carpetas.
+# Métodos de importación de scripts.
 
 Nivel conocimiento: Intermedio (Imports, ambientes, comandos)
 
@@ -6,7 +6,7 @@ Tiempo de lectura: 30 minutos
 
 ## Introducción
 
-Puede que te hayas encontrado con esta situación: Se tiene un proyecto python que ha estado creciendo, después de una refactorización se han creado dos carpetas: una carpeta que conforma el paquete principal y otra de scripts que no es parte del paquete, pero depende de este. La estructura es la siguiente:
+Puede que te hayas encontrado con esta situación: Se tiene un proyecto python que ha estado creciendo, después de una refactorización se han creado dos carpetas: una que conforma el paquete principal y otra de scripts que no es parte del paquete, pero depende de este. La estructura es la siguiente:
 
 ``` python
 # .
@@ -30,13 +30,13 @@ if __name__ == '__main__':
     main()
 ```
 
-**Nota:** la línea **`if __name__ == '__main__':`**, a muy grandes rasgos, diferencia si el archivo es ejecutado directamente como script o importado por otro archivo como módulo, de esto depende si el contenido del `if` se ejecuta o no respectivamente. Puedes leer más detalles de esto en [este artículo](https://realpython.com/if-name-main-python/).
+**Nota:** la línea **"`if __name__ == '__main__':`"**, a grandes rasgos, diferencia si el archivo es ejecutado directamente como script o importado por otro archivo como módulo, de esto depende si el contenido del `if` se ejecuta o no respectivamente. Puedes leer más detalles de esto en [este artículo](https://realpython.com/if-name-main-python/).
 
-Dependiendo de cómo se intente acceder al archivo `script.py` este podría funcionar o no por una u otra razón. Los siguientes son métodos, basados en esta estructura, para lograr que los archivos contenidos en `scripts` funcionen correctamente.
+Dependiendo de cómo se intente acceder al archivo `script.py` este podría funcionar o no por una u otra razón. Los siguientes son métodos, basados en esta estructura, para lograr que los archivos en el directorio en `scripts` funcionen correctamente.
 
 ## Caso 1: El punto de ejecución importa
 
-Basado en esta estructura es posible ejecutar cualquier script si se invoca como módulo, pero tiene que hacerse desde la ubicación correcta, por ejemplo.
+Basado en esta estructura es posible ejecutar cualquier script si se invoca como módulo, pero tiene que hacerse desde la ubicación correcta.
 
 ``` bash
 \case1\project> python -m scripts.script
@@ -48,18 +48,18 @@ Welcome from foo!
 Welcome from foo!
 ```
 
-Esto funciona porque el punto de ejecución del intérprete es `\case1\project`, en este directorio está `package` que hace referencia a la línea `from package.module import foo` del archivo `script.py`. Para entender mejor el concepto de directorios de importación puedes ayudarte leyendo [este artículo](https://www.howtouselinux.com/post/understanding-sys-path-in-python).
+Esto funciona porque, por un lado, el punto de ejecución del intérprete es `\case1\project` y, por orto lado, la línea `from package.module import foo` del archivo `script.py` hace referencia al directorio `package` igualmente contenido en `\case1\project`. Para entender mejor el concepto de directorios de importación se puede leer [este artículo](https://www.howtouselinux.com/post/understanding-sys-path-in-python).
 
-Ahora se invoca el archivo como script:
+Por otro lado, cuando se ejecuta el archivo como script este no funciona:
 
 ``` bash
 \case1\project> python scripts\script.py
 ModuleNotFoundError: No module named 'package'
 ```
 
-En este caso, sin importar desde donde se invoque el archivo como script, el punto de ejecución es `\case1\project\scripts`. En este directorio no existe `package` por lo que no puede importarlo.
+Lo que pasa aquí es que sin importar desde donde se invoque el archivo, mientras se invoque como script, el punto de ejecución del interprete es `\case1\project\scripts`. En ese directorio no existe `package` lo que genera la excepción `ModuleNotFoundError`.
 
-Ejercicio: Agrega el siguiente archivo, intenta ejecutar el comando anterior y explica que es lo que ha pasado.
+Ejercicio: Agrega el siguiente archivo, intenta ejecutar el comando anterior y explica que el resultado.
 
 ``` python
 # case1/project/scripts/package/module.py
@@ -68,17 +68,17 @@ def foo():
 ```
 
 ### Ventajas:
-- Es el más sencillo de los métodos.
+- Es el más sencillo de los métodos en cuanto a que no necesita agregar código.
 
 ### Desventaja:
-- Tiene que conocerse el punto de arranque del intérprete y la disposición de los paquetes desde ese punto. Es necesario cierta comprensión de los directorios de búsqueda de paquetes.
+- Tiene que conocerse el directorio de ejecución del intérprete y que paquetes estan disponibles desde dicho directorio. La comprensión de importación de paquetes es necesaria.
 
-- No hay manera de hacer esto (sin agregar código) si el script depende de dos paquetes contenidos en distintos directorios.
+- Si el script depende de dos paquetes contenidos en distintos directorios no funcionará este método.
 
 ### Recomendado
 - Cuando las ejecuciones de scripts son la excepción, no la regla, y todos los paquetes en desarrollo están en el mismo directorio.
 
-## Caso 2: Agregar el directorio del paquete
+## Caso 2: Ampliar los directorios de importación
 
 Para este caso el archivo `script.py` de caso 2.1 se ha modificado, el resto continúa igual.
 
@@ -99,7 +99,7 @@ if __name__ == '__main__':
     main()
 ```
 
-Aquí, a grandes rasgos, la librería `os` da acceso a funcionalidades del sistema operativo, `sys` da acceso a variables que usa el intérprete de Python. `__file__` es la ruta absoluta de `script.py`, `currentdir` es el directorio de la carpeta `scripts` y `parentdir` el de `project`, este último directorio se agrega a `sys.path` que, si ya leeíste [el artículo](https://www.howtouselinux.com/post/understanding-sys-path-in-python), sabrás que este directorio también se inspeccionará al momento de buscar `package`, por esto el programa funciona sin importar la forma o el lugar donde se invoca el script.
+Aquí, a grandes rasgos, la librería `os` da acceso a funcionalidades del sistema operativo, `sys` da acceso a variables que usa el intérprete de Python. `__file__` es la ruta absoluta de `script.py`, `currentdir` es el directorio de la carpeta `scripts` y `parentdir` el de `project`, este último directorio se agrega a `sys.path` que, si ya leeíste [el artículo](https://www.howtouselinux.com/post/understanding-sys-path-in-python), sabrás que este directorio también se inspeccionará al momento de buscar `package`, por esto el programa funciona sin importar la forma o el lugar donde se invoque el script.
 
 ``` bash
 \case2.1> python project\scripts\script.py
@@ -191,7 +191,7 @@ setuptools.setup(
 
 Para entender este paquete y saber que más puedes hacer con él puedes leer [este artículo](https://godatadriven.com/blog/a-practical-guide-to-using-setup-py/).
 
-Antes que nada se recomienda crear y activar un entorno virtual para no modificar la versión de Python que se tiene instalada (entiende más de entornos virtuales en [este artículo](https://realpython.com/python-virtual-environments-a-primer/)). Posteriormente, se instala el paquete.
+También recomiendo crear y activar un entorno virtual para no modificar la versión de Python que se tiene instalada (entiende más de entornos virtuales en [este artículo](https://realpython.com/python-virtual-environments-a-primer/)). Posteriormente, se instala el paquete.
 
 ``` bash
 \case3\project> python -m venv venv
@@ -222,15 +222,15 @@ Welcome from foo!
 
 ### Desventaja
 - Se recomienda encarecidamente usar un ambiente virtual para no ensuciar la instalación de Python.
-- Se tiene que reinstalar el paquete cada vez que tenga un cambio.
-- La instalación generará directorios que muy probablemente no se quieren versionar, el ejemplo lo puedes ver en el `.gitignore` de este proyecto.
+- Se tiene que reinstalar el paquete cada vez que el mismo tenga un cambio.
+- La instalación generará directorios que muy probablemente no se quieren versionar, puedes ver que carpetas se excluyen del versionado en el `.gitignore` de este proyecto.
 
 ### Recomendado
 - En general es el método recomendado para cualquier caso.
 
 ## Caso 4: Punto de entrada
 
-Este método lo considero el más difícil de todas por lo mucho que puede aumentar la lógica y complejidad de un proyecto. La idea es agregar un archivo que va a funcionar como punto de entrada, si has trabajado con Django te sonará el archivo `manage.py`, archivo que funciona como punto de entrada para las funcionalidades principales de los proyectos. En este caso se agrega la versión más simple que se me puede ocurrir de un punto de entrada.
+Este método lo considero el más difícil de todos por lo mucho que puede aumentar la lógica y complejidad de un proyecto. La idea es agregar un archivo que va a funcionar como punto de entrada, si has trabajado con Django te sonará el archivo `manage.py`, archivo que funciona como punto de entrada para las funcionalidades principales de los proyectos. En este caso se agrega la versión más simple que se me ha ocurrido de un punto único de entrada.
 
 ``` python
 # case4/project/run.py
@@ -277,7 +277,7 @@ Otras aproximaciones de este método mueven la carpeta de `scripts` dentro de `p
 
 ### Ventajas
 - Siempre es más seguro tener un único punto de entrada multipropósito que tener múltiples puntos de entrada individuales.
-- El punto de entrada único en sí mismo es una forma de documentar el proyecto.
+- El **punto de entrada único** en sí mismo es una forma de documentar el proyecto.
 
 ### Desventajas
 - En necesaria una implementación de la lógica en el punto de entrada, su complejidad dependerá de las características que se deseen agregar al proyecto.
